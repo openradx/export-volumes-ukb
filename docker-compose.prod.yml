@@ -1,0 +1,21 @@
+services:
+  dagster:
+    build:
+      target: production
+    image: export_volumes_pipeline_prod:latest
+    volumes:
+      - ./dagster_home_prod:/opt/dagster/dagster_home
+    restart: always
+
+  nginx:
+    image: nginx:latest
+    ports:
+      - "${DAGSTER_PROD_PORT:-3600}:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./.htpasswd:/etc/nginx/.htpasswd
+      - ./ssl.crt:/etc/nginx/ssl.crt
+      - ./ssl.key:/etc/nginx/ssl.key
+    depends_on:
+      - dagster
+    restart: always

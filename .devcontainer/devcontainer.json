@@ -1,0 +1,33 @@
+{
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {
+      // Install Docker CE instead of an (by default) older Moby version
+      "moby": false
+    }
+  },
+  // https://github.com/orgs/community/discussions/50403
+  // "initializeCommand": "docker system prune --all --force",
+  "postCreateCommand": "poetry install",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "charliermarsh.ruff",
+        "davidanson.vscode-markdownlint",
+        "eamodio.gitlens",
+        "esbenp.prettier-vscode",
+        "foxundermoon.shell-format",
+        "mhutchie.git-graph",
+        "mikestead.dotenv",
+        "ms-azuretools.vscode-docker",
+        "ms-pyright.pyright",
+        "ms-python.python",
+        "streetsidesoftware.code-spell-checker",
+        "tamasfe.even-better-toml",
+        "wayou.vscode-todo-highlight"
+      ]
+    }
+  }
+}
