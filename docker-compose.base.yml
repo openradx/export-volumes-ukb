@@ -15,4 +15,4 @@ services:
       NO_PROXY: "${NO_PROXY}"
       PACS_AE_TITLE: "${PACS_AE_TITLE}"
     command: >
-      bash -c "./scripts/start_server.sh"
+      bash -c "dagster dev -h 0.0.0.0 -m export_volumes_pipeline"

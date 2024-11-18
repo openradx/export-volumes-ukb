@@ -4,7 +4,8 @@ services:
       target: development
     image: export_volumes_pipeline_dev:latest
     ports:
-      - "${DAGSTER_DEV_PORT:-3500}:3000"
+      - "${WEB_HTTP_PORT:-80}:80"
+      - "${WEB_HTTPS_PORT:-443}:443"
     volumes:
       - ./dagster_home_dev:/opt/dagster/dagster_home
       - .:/opt/dagster/app
