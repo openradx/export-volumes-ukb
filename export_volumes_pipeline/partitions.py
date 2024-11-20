@@ -1,7 +1,8 @@
+import os
+
 from dagster import DailyPartitionsDefinition
 
-from . import constants
-
 daily_partition = DailyPartitionsDefinition(
-    start_date=constants.START_DATE, end_date=constants.END_DATE
+    start_date=os.environ["PARTITION_START_DATE"],
+    end_date=os.environ["PARTITION_END_DATE"],
 )

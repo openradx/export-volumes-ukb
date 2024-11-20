@@ -25,15 +25,15 @@ class VolumesConfig(Config):
         default=EnvVar("PACS_AE_TITLE"),
         description=("The AE title of the PACS to download volumes from."),
     )
-    modalities: list[str] = Field(
+    modalities: str = Field(
         default=EnvVar("MODALITIES"),
-        description="The volume modalities we want to download.",
+        description="Comma separated list of modalities we want to download.",
     )
-    institution_name_regex: str | None = Field(
+    institution_name_regex: str = Field(
         default=EnvVar("INSTITUTION_NAME_REGEX"),
         description="An optional regex to exclude studies by institution name.",
     )
-    institution_address_regex: str | None = Field(
+    institution_address_regex: str = Field(
         default=EnvVar("INSTITUTION_ADDRESS_REGEX"),
         description="An optional regex to exclude studies by institution address.",
     )
@@ -48,7 +48,8 @@ def found_volumes(
     end = time_window.end - timedelta(seconds=1)
 
     found_studies: list[Dataset] = []
-    for modality in config.modalities:
+    modalities = [m.strip() for m in config.modalities.split(",")]
+    for modality in modalities:
         studies = adit.find_studies(config.pacs_ae_title, start, end, modality)
         if config.institution_name_regex:
             studies = [
@@ -68,7 +69,7 @@ def found_volumes(
     for study in studies:
         series_list = adit.find_series(config.pacs_ae_title, study.StudyInstanceUID)
         for series in series_list:
-            if series.Modality not in config.modalities:
+            if series.Modality not in modalities:
                 continue
 
             study_datetime = datetime.combine(study.StudyDate, study.StudyTime)
@@ -96,12 +97,15 @@ def found_volumes(
 
 @asset(partitions_def=daily_partition)
 def exported_volumes(
-    context: AssetExecutionContext, config: VolumesConfig, adit: AditResource, volumes: list[Volume]
+    context: AssetExecutionContext,
+    config: VolumesConfig,
+    adit: AditResource,
+    found_volumes: list[Volume],
 ) -> None:
     io_manager: VolumesIOManager = context.resources.io_manager
     volumes_path = Path(io_manager.volumes_dir)
 
-    for volume in volumes:
+    for volume in found_volumes:
         assert volume.db_id is not None
 
         pseudonym = shortuuid.uuid()
