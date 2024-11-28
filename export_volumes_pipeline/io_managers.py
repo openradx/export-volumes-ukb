@@ -147,9 +147,8 @@ class ConfigurableVolumesIOManager(ConfigurableIOManagerFactory):
         if not context.instance:
             raise AssertionError("Missing instance in IO manager factory")
 
-        storage_path = Path(context.instance.storage_directory())
-        storage_path.mkdir(exist_ok=True, parents=True)
-        db_path = storage_path / "volumes.sqlite"
+        root_dir = Path(context.instance.root_directory)
+        db_path = root_dir / "volumes.sqlite"
 
         export_path = Path(self.export_dir)
         if not export_path.is_dir():
