@@ -69,10 +69,11 @@ def found_volumes(
             found_volumes.append(
                 Volume(
                     db_id=None,
+                    pseudonym=shortuuid.uuid(),
                     patient_id=study.PatientID,
+                    accession_number=study.AccessionNumber,
                     study_instance_uid=study.StudyInstanceUID,
                     series_instance_uid=series.SeriesInstanceUID,
-                    accession_number=study.AccessionNumber,
                     modality=series.Modality,
                     study_description=study.StudyDescription,
                     series_description=series.SeriesDescription,
@@ -81,7 +82,6 @@ def found_volumes(
                     study_time=study.StudyTime,
                     number_of_series_related_instances=series.NumberOfSeriesRelatedInstances,
                     folder=None,
-                    pseudonym=None,
                 )
             )
 
@@ -103,18 +103,20 @@ def exported_volumes(
     for volume in found_volumes:
         assert volume.db_id is not None
 
-        pseudonym = shortuuid.uuid()
-        output_path = export_path / pseudonym
+        output_path = export_path / volume.pseudonym
         output_path.mkdir()
 
         dicoms = adit.download_series(
-            config.pacs_ae_title, volume.study_instance_uid, volume.series_instance_uid, pseudonym
+            config.pacs_ae_title,
+            volume.study_instance_uid,
+            volume.series_instance_uid,
+            volume.pseudonym,
         )
 
         for dicom in dicoms:
             dicom.save_as(output_path / f"{dicom.SOPInstanceUID}.dcm")
 
-        io_manager.update_volume(volume.db_id, output_path.absolute().as_posix(), pseudonym)
+        io_manager.update_volume(volume.db_id, str(output_path.absolute()))
 
 
 all_assets = load_assets_from_current_module()

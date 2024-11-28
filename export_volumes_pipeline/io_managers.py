@@ -26,9 +26,11 @@ class VolumesIOManager(IOManager):
                 CREATE TABLE IF NOT EXISTS volumes (
                     id INTEGER PRIMARY KEY,
                     partition_key TEXT,
+                    pseudonym TEXT UNIQUE,
                     patient_id TEXT,
+                    accession_number TEXT,
                     study_instance_uid TEXT,
-                    series_instance_uid TEXT,
+                    series_instance_uid TEXT UNIQUE,
                     modality TEXT,
                     study_description TEXT,
                     series_description TEXT,
@@ -36,8 +38,7 @@ class VolumesIOManager(IOManager):
                     study_date TEXT,
                     study_time TEXT,
                     number_of_series_related_instances INTEGER,
-                    folder TEXT,
-                    pseudonym TEXT
+                    folder TEXT
                 );
                 """
             )
@@ -60,10 +61,11 @@ class VolumesIOManager(IOManager):
                     INSERT INTO volumes VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ON CONFLICT(id) DO UPDATE SET
                         partition_key=excluded.partition_key,
+                        pseudonym=excluded.pseudonym,
                         patient_id=excluded.patient_id,
+                        accession_number=excluded.accession_number,
                         study_instance_uid=excluded.study_instance_uid,
                         series_instance_uid=excluded.series_instance_uid,
-                        accession_number=excluded.accession_number,
                         modality=excluded.modality,
                         study_description=excluded.study_description,
                         series_description=excluded.series_description,
@@ -71,16 +73,16 @@ class VolumesIOManager(IOManager):
                         study_date=excluded.study_date,
                         study_time=excluded.study_time,
                         number_of_series_related_instances=excluded.number_of_series_related_instances,
-                        folder=excluded.folder,
-                        pseudonym=excluded.pseudonym
+                        folder=excluded.folder
                     """,
                     (
                         volume.db_id,
                         context.asset_partition_key,
+                        volume.pseudonym,
                         volume.patient_id,
+                        volume.accession_number,
                         volume.study_instance_uid,
                         volume.series_instance_uid,
-                        volume.accession_number,
                         volume.modality,
                         volume.study_description,
                         volume.series_description,
@@ -89,7 +91,6 @@ class VolumesIOManager(IOManager):
                         volume.study_time,
                         volume.number_of_series_related_instances,
                         volume.folder,
-                        volume.pseudonym,
                     ),
                 )
             conn.commit()
@@ -106,33 +107,35 @@ class VolumesIOManager(IOManager):
             rows = cursor.fetchall()
 
             volumes = []
+            context.log.info(f"Loading {len(rows)} {rows}.")
             for row in rows:
                 volume = Volume(
-                    db_id=row[1],
-                    patient_id=row[2],
-                    study_instance_uid=row[3],
-                    series_instance_uid=row[4],
-                    accession_number=row[5],
-                    modality=row[6],
-                    study_description=row[7],
-                    series_description=row[8],
-                    series_number=row[9],
-                    study_date=row[10],
-                    study_time=row[11],
-                    number_of_series_related_instances=row[12],
-                    folder=row[13],
-                    pseudonym=row[14],
+                    db_id=row[0],
+                    # skip partition_key row[1]
+                    pseudonym=row[2],
+                    patient_id=row[3],
+                    accession_number=row[4],
+                    study_instance_uid=row[5],
+                    series_instance_uid=row[6],
+                    modality=row[7],
+                    study_description=row[8],
+                    series_description=row[9],
+                    series_number=row[10],
+                    study_date=row[11],
+                    study_time=row[12],
+                    number_of_series_related_instances=row[13],
+                    folder=row[14],
                 )
                 volumes.append(volume)
 
         return volumes
 
-    def update_volume(self, db_id: int, folder: str, pseudonym: str) -> None:
+    def update_volume(self, db_id: int, folder: str) -> None:
         with sqlite3.connect(self.db_file) as conn:
             cursor = conn.cursor()
             cursor.execute(
-                "UPDATE volumes SET folder = ?, pseudonym = ? WHERE id = ?",
-                (folder, pseudonym, db_id),
+                "UPDATE volumes SET folder = ? WHERE id = ?",
+                (folder, db_id),
             )
             conn.commit()
 

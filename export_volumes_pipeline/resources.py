@@ -39,7 +39,12 @@ class AditResource(ConfigurableResource):
                 assert instance
                 verify = (Path(instance.root_directory) / ca_bundle_path).as_posix()
 
-        self._client = AditClient(server_url=self.host, auth_token=self.auth_token, verify=verify)
+        self._client = AditClient(
+            server_url=self.host,
+            auth_token=self.auth_token,
+            verify=verify,
+            skip_elements_anonymization=[],
+        )
 
         if not context.log:
             raise ValueError("Missing log manager.")
