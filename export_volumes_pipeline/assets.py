@@ -1,5 +1,4 @@
-import re
-from datetime import datetime, timedelta
+import datetime
 from pathlib import Path
 
 import shortuuid
@@ -29,13 +28,13 @@ class VolumesConfig(Config):
         default=EnvVar("MODALITIES"),
         description="Comma separated list of modalities we want to download.",
     )
-    institution_name_regex: str = Field(
-        default=EnvVar("INSTITUTION_NAME_REGEX"),
-        description="An optional regex to exclude studies by institution name.",
+    min_volume_size: int = Field(
+        default=EnvVar.int("MIN_VOLUME_SIZE"),
+        description="Minimum number of images in the volume.",
     )
-    institution_address_regex: str = Field(
-        default=EnvVar("INSTITUTION_ADDRESS_REGEX"),
-        description="An optional regex to exclude studies by institution address.",
+    excluded_study_description_prefix: str = Field(
+        default=EnvVar("EXCLUDED_STUDY_DESCRIPTION_PREFIX"),
+        description="An optional prefix to exclude studies by description.",
     )
 
 
@@ -45,52 +44,48 @@ def found_volumes(
 ) -> list[Volume]:
     time_window = context.partition_time_window
     start = time_window.start
-    end = time_window.end - timedelta(seconds=1)
+    end = time_window.end - datetime.timedelta(seconds=1)
 
     found_studies: list[Dataset] = []
     modalities = [m.strip() for m in config.modalities.split(",")]
     for modality in modalities:
         studies = adit.find_studies(config.pacs_ae_title, start, end, modality)
-        if config.institution_name_regex:
-            studies = [
-                study
-                for study in studies
-                if re.search(config.institution_name_regex, study.StudyDescription)
-            ]
-        if config.institution_address_regex:
-            studies = [
-                study
-                for study in studies
-                if re.search(config.institution_address_regex, study.StudyDescription)
-            ]
-        found_studies.extend(studies)
+        for study in studies:
+            if study.StudyDescription.startswith(config.excluded_study_description_prefix):
+                continue
+
+            found_studies.append(study)
 
     found_volumes: list[Volume] = []
-    for study in studies:
+    for study in found_studies:
         series_list = adit.find_series(config.pacs_ae_title, study.StudyInstanceUID)
         for series in series_list:
             if series.Modality not in modalities:
                 continue
 
-            study_datetime = datetime.combine(study.StudyDate, study.StudyTime)
+            if series.NumberOfSeriesRelatedInstances < config.min_volume_size:
+                continue
+
             found_volumes.append(
                 Volume(
                     db_id=None,
                     patient_id=study.PatientID,
                     study_instance_uid=study.StudyInstanceUID,
                     series_instance_uid=series.SeriesInstanceUID,
+                    accession_number=study.AccessionNumber,
                     modality=series.Modality,
                     study_description=study.StudyDescription,
                     series_description=series.SeriesDescription,
                     series_number=int(series.SeriesNumber),
-                    study_datetime=study_datetime,
+                    study_date=study.StudyDate,
+                    study_time=study.StudyTime,
                     number_of_series_related_instances=series.NumberOfSeriesRelatedInstances,
                     folder=None,
                     pseudonym=None,
                 )
             )
 
-    context.log.info(f"{len(found_volumes)} volumes found.")
+    context.log.info(f"{len(found_volumes)} volumes found in {len(found_studies)} studies.")
 
     return found_volumes
 
@@ -103,13 +98,13 @@ def exported_volumes(
     found_volumes: list[Volume],
 ) -> None:
     io_manager: VolumesIOManager = context.resources.io_manager
-    volumes_path = Path(io_manager.volumes_dir)
+    export_path = Path(io_manager.export_dir)
 
     for volume in found_volumes:
         assert volume.db_id is not None
 
         pseudonym = shortuuid.uuid()
-        output_path = volumes_path / pseudonym
+        output_path = export_path / pseudonym
         output_path.mkdir()
 
         dicoms = adit.download_series(

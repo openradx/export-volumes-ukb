@@ -1,5 +1,4 @@
 import sqlite3
-from datetime import datetime
 from pathlib import Path
 
 from dagster import (
@@ -14,9 +13,9 @@ from .models import Volume
 
 
 class VolumesIOManager(IOManager):
-    def __init__(self, db_file: str, volumes_dir: str):
+    def __init__(self, db_file: str, export_dir: str):
         self.db_file = db_file
-        self.volumes_dir = volumes_dir
+        self.export_dir = export_dir
         self._init_db()
 
     def _init_db(self):
@@ -34,7 +33,8 @@ class VolumesIOManager(IOManager):
                     study_description TEXT,
                     series_description TEXT,
                     series_number INTEGER,
-                    study_datetime TEXT,
+                    study_date TEXT,
+                    study_time TEXT,
                     number_of_series_related_instances INTEGER,
                     folder TEXT,
                     pseudonym TEXT
@@ -55,20 +55,21 @@ class VolumesIOManager(IOManager):
         with sqlite3.connect(self.db_file) as conn:
             cursor = conn.cursor()
             for volume in volumes:
-                study_datetime_str = volume.study_datetime.isoformat()
                 cursor.execute(
                     """
-                    INSERT INTO volumes VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO volumes VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ON CONFLICT(id) DO UPDATE SET
                         partition_key=excluded.partition_key,
                         patient_id=excluded.patient_id,
                         study_instance_uid=excluded.study_instance_uid,
                         series_instance_uid=excluded.series_instance_uid,
+                        accession_number=excluded.accession_number,
                         modality=excluded.modality,
                         study_description=excluded.study_description,
                         series_description=excluded.series_description,
                         series_number=excluded.series_number,
-                        study_datetime=excluded.study_datetime,
+                        study_date=excluded.study_date,
+                        study_time=excluded.study_time,
                         number_of_series_related_instances=excluded.number_of_series_related_instances,
                         folder=excluded.folder,
                         pseudonym=excluded.pseudonym
@@ -79,11 +80,13 @@ class VolumesIOManager(IOManager):
                         volume.patient_id,
                         volume.study_instance_uid,
                         volume.series_instance_uid,
+                        volume.accession_number,
                         volume.modality,
                         volume.study_description,
                         volume.series_description,
                         volume.series_number,
-                        study_datetime_str,
+                        volume.study_date,
+                        volume.study_time,
                         volume.number_of_series_related_instances,
                         volume.folder,
                         volume.pseudonym,
@@ -104,20 +107,21 @@ class VolumesIOManager(IOManager):
 
             volumes = []
             for row in rows:
-                study_datetime = datetime.fromisoformat(row[9])
                 volume = Volume(
                     db_id=row[1],
                     patient_id=row[2],
                     study_instance_uid=row[3],
                     series_instance_uid=row[4],
-                    modality=row[5],
-                    study_description=row[6],
-                    series_description=row[7],
-                    series_number=row[8],
-                    study_datetime=study_datetime,
-                    number_of_series_related_instances=row[10],
-                    folder=row[11],
-                    pseudonym=row[12],
+                    accession_number=row[5],
+                    modality=row[6],
+                    study_description=row[7],
+                    series_description=row[8],
+                    series_number=row[9],
+                    study_date=row[10],
+                    study_time=row[11],
+                    number_of_series_related_instances=row[12],
+                    folder=row[13],
+                    pseudonym=row[14],
                 )
                 volumes.append(volume)
 
@@ -134,11 +138,18 @@ class VolumesIOManager(IOManager):
 
 
 class ConfigurableVolumesIOManager(ConfigurableIOManagerFactory):
-    db_file: str
-    volumes_dir: str
+    export_dir: str
 
     def create_io_manager(self, context: InitResourceContext) -> VolumesIOManager:
-        volumes_path = Path(self.volumes_dir)
-        volumes_path.mkdir(parents=True, exist_ok=True)
+        if not context.instance:
+            raise AssertionError("Missing instance in IO manager factory")
 
-        return VolumesIOManager(self.db_file, self.volumes_dir)
+        storage_path = Path(context.instance.storage_directory())
+        storage_path.mkdir(exist_ok=True, parents=True)
+        db_path = storage_path / "volumes.sqlite"
+
+        export_path = Path(self.export_dir)
+        if not export_path.is_dir():
+            raise AssertionError("Invalid volumes directory.")
+
+        return VolumesIOManager(db_path.as_posix(), export_path.as_posix())

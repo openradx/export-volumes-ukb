@@ -8,10 +8,13 @@ from dagster._core.execution.context.init import InitResourceContext
 from pydantic import Field, PrivateAttr
 from pydicom import Dataset
 
+from export_volumes_pipeline.utils import is_falsy
+
 
 class AditResource(ConfigurableResource):
     host: str
     auth_token: str
+    verify_ssl: str
     ca_bundle: str
     max_search_results: int = Field(
         default=199,
@@ -26,8 +29,8 @@ class AditResource(ConfigurableResource):
     _logger: DagsterLogManager = PrivateAttr()
 
     def setup_for_execution(self, context: InitResourceContext) -> None:
-        verify: str | bool = True
-        if self.ca_bundle:
+        verify: str | bool = not is_falsy(self.verify_ssl)
+        if verify and self.ca_bundle:
             ca_bundle_path = Path(self.ca_bundle)
             if ca_bundle_path.is_absolute():
                 verify = ca_bundle_path.as_posix()
