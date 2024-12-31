@@ -18,12 +18,18 @@ invoke_tasks.PROJECT_DIR = Path(__file__).resolve().parent
 
 
 @task
-def clean_dagster_home(ctx: Context):
+def clean_dagster_home(ctx: Context, production: bool = False):
     """Clean dagster_home folder"""
-    if Utility.is_production():
+    if production:
         dagster_home_dir = Utility.get_project_dir() / "dagster_home_prod"
-    dagster_home_dir = Utility.get_project_dir() / "dagster_home_dev"
+    else:
+        dagster_home_dir = Utility.get_project_dir() / "dagster_home_dev"
 
     for item in dagster_home_dir.glob("*"):
         if not item.name == "dagster.yaml":
-            shutil.rmtree(item)
+            if item.is_file() or item.is_symlink():
+                item.unlink()
+            elif item.is_dir():
+                shutil.rmtree(item)
+            else:
+                raise ValueError(f"Unexpected item: {item}")

@@ -1,6 +1,6 @@
 services:
   dagster:
-    user: "${UID}:${GID}"
+    user: "${USER_UID}:${USER_GID}"
     volumes:
       - "${VOLUMES_DIR:?}:/exported_volumes"
     environment:
