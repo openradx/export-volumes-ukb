@@ -14,6 +14,7 @@ from pydicom import Dataset
 
 from export_volumes_pipeline.io_managers import VolumesIOManager
 from export_volumes_pipeline.models import Volume
+from export_volumes_pipeline.utils import sanitize_filename
 
 from .partitions import daily_partition
 from .resources import AditResource
@@ -57,6 +58,8 @@ def found_volumes(
 
     found_volumes: list[Volume] = []
     for study in found_studies:
+        # Each study gets a unique pseudonym
+        pseudonym = shortuuid.uuid()
         series_list = adit.find_series(config.pacs_ae_title, study.StudyInstanceUID)
         for series in series_list:
             if series.Modality not in modalities:
@@ -68,7 +71,7 @@ def found_volumes(
             found_volumes.append(
                 Volume(
                     db_id=None,
-                    pseudonym=shortuuid.uuid(),
+                    pseudonym=pseudonym,
                     patient_id=study.PatientID,
                     accession_number=study.AccessionNumber,
                     study_instance_uid=study.StudyInstanceUID,
@@ -102,8 +105,9 @@ def exported_volumes(
     for volume in found_volumes:
         assert volume.db_id is not None
 
-        output_path = export_path / volume.pseudonym
-        output_path.mkdir()
+        volume_name = f"{volume.series_number}-{sanitize_filename(volume.series_description)}"
+        volume_path = export_path / volume.study_date / volume.pseudonym / volume_name
+        volume_path.mkdir(parents=True, exist_ok=True)
 
         dicoms = adit.download_series(
             config.pacs_ae_title,
@@ -113,9 +117,9 @@ def exported_volumes(
         )
 
         for dicom in dicoms:
-            dicom.save_as(output_path / f"{dicom.SOPInstanceUID}.dcm")
+            dicom.save_as(volume_path / f"{dicom.SOPInstanceUID}.dcm")
 
-        io_manager.update_volume(volume.db_id, str(output_path.absolute()))
+        io_manager.update_volume(volume.db_id, str(volume_path.absolute()))
 
 
 all_assets = load_assets_from_current_module()
