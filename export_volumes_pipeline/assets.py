@@ -32,9 +32,9 @@ class VolumesConfig(Config):
         default=EnvVar.int("MIN_VOLUME_SIZE"),
         description="Minimum number of images in the volume.",
     )
-    excluded_study_description_prefix: str = Field(
-        default=EnvVar("EXCLUDED_STUDY_DESCRIPTION_PREFIX"),
-        description="An optional prefix to exclude studies by description.",
+    institution_name: str = Field(
+        default=EnvVar("INSTITUTION_NAME"),
+        description="Filter studies by institution name (* acts as a wildcard).",
     )
 
 
@@ -49,11 +49,10 @@ def found_volumes(
     found_studies: list[Dataset] = []
     modalities = [m.strip() for m in config.modalities.split(",")]
     for modality in modalities:
-        studies = adit.find_studies(config.pacs_ae_title, start, end, modality)
+        institution_name: str = config.institution_name
+        studies = adit.find_studies(config.pacs_ae_title, start, end, modality, institution_name)
         for study in studies:
-            if study.StudyDescription.startswith(config.excluded_study_description_prefix):
-                continue
-
+            assert institution_name in study.InstitutionName
             found_studies.append(study)
 
     found_volumes: list[Volume] = []

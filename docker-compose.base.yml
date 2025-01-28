@@ -11,11 +11,11 @@ services:
       EXPORT_DIR: "/exported_volumes"
       HTTP_PROXY: "${HTTP_PROXY}"
       HTTPS_PROXY: "${HTTPS_PROXY}"
+      INSTITUTION_NAME: "${INSTITUTION_NAME}"
       MIN_VOLUME_SIZE: "${MIN_VOLUME_SIZE}"
       MODALITIES: "${MODALITIES}"
       NO_PROXY: "${NO_PROXY}"
       PACS_AE_TITLE: "${PACS_AE_TITLE}"
-      EXCLUDED_STUDY_DESCRIPTION_PREFIX: "${EXCLUDED_STUDY_DESCRIPTION_PREFIX}"
       VERIFY_SSL: "${VERIFY_SSL}"
     command: >
       bash -c "dagster dev -h 0.0.0.0 -m export_volumes_pipeline"

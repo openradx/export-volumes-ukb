@@ -51,7 +51,7 @@ class AditResource(ConfigurableResource):
         self._logger = context.log
 
     def find_studies(
-        self, ae_title: str, start: datetime, end: datetime, modality: str
+        self, ae_title: str, start: datetime, end: datetime, modality: str, institution_name: str
     ) -> list[Dataset]:
         start_date = start.strftime("%Y%m%d")
         end_date = end.strftime("%Y%m%d")
@@ -65,6 +65,7 @@ class AditResource(ConfigurableResource):
             "StudyDate": study_date,
             "StudyTime": study_time,
             "ModalitiesInStudy": modality,
+            "InstitutionName": institution_name,
         }
 
         self._logger.debug(f"Find studies: {query}")
@@ -82,8 +83,8 @@ class AditResource(ConfigurableResource):
                 raise ValueError(f"Time window too small ({start} to {end}).")
 
             mid = start + delta / 2
-            part1 = self.find_studies(ae_title, start, mid, modality)
-            part2 = self.find_studies(ae_title, mid, end, modality)
+            part1 = self.find_studies(ae_title, start, mid, modality, institution_name)
+            part2 = self.find_studies(ae_title, mid, end, modality, institution_name)
             return part1 + part2
 
         return results
