@@ -1,4 +1,6 @@
+import hashlib
 import re
+import string
 
 
 def is_falsy(value: str) -> bool:
@@ -48,3 +50,16 @@ def sanitize_filename(name):
     if not sanitized_name or sanitized_name.upper() in reserved_names:
         sanitized_name = "default_name"
     return sanitized_name
+
+
+BASE62_ALPHABET = string.digits + string.ascii_letters  # 0-9, A-Z, a-z
+
+
+def hash_date_base62(date_str: str, length: int = 10) -> str:
+    hash_obj = hashlib.sha256(date_str.encode()).digest()
+    num = int.from_bytes(hash_obj, "big")
+    base62 = []
+    while num > 0:
+        num, rem = divmod(num, 62)
+        base62.append(BASE62_ALPHABET[rem])
+    return "".join(base62)[:length]

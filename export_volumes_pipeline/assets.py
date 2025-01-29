@@ -14,7 +14,7 @@ from pydicom import Dataset
 
 from export_volumes_pipeline.io_managers import VolumesIOManager
 from export_volumes_pipeline.models import Volume
-from export_volumes_pipeline.utils import sanitize_filename
+from export_volumes_pipeline.utils import hash_date_base62, sanitize_filename
 
 from .partitions import daily_partition
 from .resources import AditResource
@@ -105,8 +105,9 @@ def exported_volumes(
     for volume in found_volumes:
         assert volume.db_id is not None
 
+        date_hash = hash_date_base62(volume.study_date)
         volume_name = f"{volume.series_number}-{sanitize_filename(volume.series_description)}"
-        volume_path = export_path / volume.study_date / volume.pseudonym / volume_name
+        volume_path = export_path / date_hash / volume.pseudonym / volume_name
         volume_path.mkdir(parents=True, exist_ok=True)
 
         dicoms = adit.download_series(
