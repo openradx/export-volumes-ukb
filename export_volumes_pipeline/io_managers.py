@@ -26,7 +26,7 @@ class VolumesIOManager(IOManager):
                 CREATE TABLE IF NOT EXISTS volumes (
                     id INTEGER PRIMARY KEY,
                     partition_key TEXT,
-                    pseudonym TEXT UNIQUE,
+                    pseudonym TEXT,
                     patient_id TEXT,
                     accession_number TEXT,
                     study_instance_uid TEXT,

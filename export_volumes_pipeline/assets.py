@@ -53,7 +53,6 @@ def found_volumes(
         institution_name: str = config.institution_name
         studies = adit.find_studies(config.pacs_ae_title, start, end, modality, institution_name)
         for study in studies:
-            assert institution_name in study.InstitutionName
             found_studies.append(study)
 
     found_volumes: list[Volume] = []
