@@ -81,6 +81,7 @@ def found_volumes(
                     series_number=int(series.SeriesNumber),
                     study_date=study.StudyDate,
                     study_time=study.StudyTime,
+                    institution_name=study.InstitutionName,
                     number_of_series_related_instances=series.NumberOfSeriesRelatedInstances,
                     folder=None,
                 )
