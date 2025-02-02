@@ -7,7 +7,7 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = ">=3.12,<3.13"
-adit-client = "^0.5.2"
+adit-client = { git = "https://github.com/openradx/adit-client.git", rev = "57f68eb7544aef28386b007e7eaeab54be99b616" }
 dagster = "^1.9.2"
 dagster-webserver = "^1.9.2"
 shortuuid = "^1.0.13"

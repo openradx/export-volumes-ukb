@@ -14,6 +14,5 @@ class Volume(BaseModel):
     series_number: int
     study_date: str
     study_time: str
-    institution_name: str
     number_of_series_related_instances: int
     folder: str | None

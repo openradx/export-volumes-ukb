@@ -37,7 +37,6 @@ class VolumesIOManager(IOManager):
                     series_number INTEGER,
                     study_date TEXT,
                     study_time TEXT,
-                    institution_name TEXT,
                     number_of_series_related_instances INTEGER,
                     folder TEXT
                 );
@@ -73,7 +72,6 @@ class VolumesIOManager(IOManager):
                         series_number=excluded.series_number,
                         study_date=excluded.study_date,
                         study_time=excluded.study_time,
-                        institution_name=excluded.institution_name,
                         number_of_series_related_instances=excluded.number_of_series_related_instances,
                         folder=excluded.folder
                     """,
@@ -91,7 +89,6 @@ class VolumesIOManager(IOManager):
                         volume.series_number,
                         volume.study_date,
                         volume.study_time,
-                        volume.institution_name,
                         volume.number_of_series_related_instances,
                         volume.folder,
                     ),
@@ -126,9 +123,8 @@ class VolumesIOManager(IOManager):
                     series_number=row[10],
                     study_date=row[11],
                     study_time=row[12],
-                    institution_name=row[13],
-                    number_of_series_related_instances=row[14],
-                    folder=row[15],
+                    number_of_series_related_instances=row[13],
+                    folder=row[14],
                 )
                 volumes.append(volume)
 

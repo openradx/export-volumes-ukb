@@ -35,7 +35,7 @@ class VolumesConfig(Config):
     )
     institution_name: str = Field(
         default=EnvVar("INSTITUTION_NAME"),
-        description="Filter studies by institution name (* acts as a wildcard).",
+        description="A string to filter studies by institution name.",
     )
 
 
@@ -50,9 +50,16 @@ def found_volumes(
     found_studies: list[Dataset] = []
     modalities = [m.strip() for m in config.modalities.split(",")]
     for modality in modalities:
+        # We can't search for studies with a specific institution name directly. So we
+        # search all studies, download one image of a study and check the institution name
+        # in that image.
+        studies = adit.find_studies(config.pacs_ae_title, start, end, modality)
         institution_name: str = config.institution_name
-        studies = adit.find_studies(config.pacs_ae_title, start, end, modality, institution_name)
         for study in studies:
+            image = adit.fetch_first_image(config.pacs_ae_title, study.StudyInstanceUID, modalities)
+            if not image or institution_name not in study.InstitutionName:
+                continue
+
             found_studies.append(study)
 
     found_volumes: list[Volume] = []
@@ -81,7 +88,6 @@ def found_volumes(
                     series_number=int(series.SeriesNumber),
                     study_date=study.StudyDate,
                     study_time=study.StudyTime,
-                    institution_name=study.InstitutionName,
                     number_of_series_related_instances=series.NumberOfSeriesRelatedInstances,
                     folder=None,
                 )

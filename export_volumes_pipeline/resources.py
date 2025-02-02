@@ -51,7 +51,7 @@ class AditResource(ConfigurableResource):
         self._logger = context.log
 
     def find_studies(
-        self, ae_title: str, start: datetime, end: datetime, modality: str, institution_name: str
+        self, ae_title: str, start: datetime, end: datetime, modality: str
     ) -> list[Dataset]:
         start_date = start.strftime("%Y%m%d")
         end_date = end.strftime("%Y%m%d")
@@ -65,7 +65,6 @@ class AditResource(ConfigurableResource):
             "StudyDate": study_date,
             "StudyTime": study_time,
             "ModalitiesInStudy": modality,
-            "InstitutionName": institution_name,
         }
 
         self._logger.debug(f"Find studies: {query}")
@@ -83,8 +82,8 @@ class AditResource(ConfigurableResource):
                 raise ValueError(f"Time window too small ({start} to {end}).")
 
             mid = start + delta / 2
-            part1 = self.find_studies(ae_title, start, mid, modality, institution_name)
-            part2 = self.find_studies(ae_title, mid, end, modality, institution_name)
+            part1 = self.find_studies(ae_title, start, mid, modality)
+            part2 = self.find_studies(ae_title, mid, end, modality)
             return part1 + part2
 
         return results
@@ -97,6 +96,25 @@ class AditResource(ConfigurableResource):
         self._logger.debug(f"Number of found series: {len(results)}")
 
         return results
+
+    def fetch_first_image(
+        self, ae_title: str, study_instance_uid: str, modalities: list[str]
+    ) -> Dataset | None:
+        series_list = self._client.search_for_series(ae_title, study_instance_uid, {})
+        for series in series_list:
+            if series.Modality in modalities:
+                images = self._client.search_for_images(
+                    ae_title, study_instance_uid, series.SeriesInstanceUID, {}
+                )
+                if images:
+                    return self._client.retrieve_image(
+                        ae_title,
+                        study_instance_uid,
+                        series.SeriesInstanceUID,
+                        images[0].SOPInstanceUID,
+                    )
+
+        return None
 
     def download_series(
         self,
