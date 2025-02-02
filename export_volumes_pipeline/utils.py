@@ -1,6 +1,7 @@
 import hashlib
 import re
 import string
+from typing import Any
 
 
 def is_falsy(value: str) -> bool:
@@ -9,6 +10,13 @@ def is_falsy(value: str) -> bool:
 
 def is_truthy(value: str) -> bool:
     return value.lower() in ["true", "1", "y", "yes", "on"]
+
+
+def parse_int(value: Any) -> int:
+    try:
+        return int(value)
+    except (ValueError, TypeError):
+        return -1
 
 
 def sanitize_filename(name):

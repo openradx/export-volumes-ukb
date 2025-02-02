@@ -15,7 +15,7 @@ from pydicom import Dataset
 
 from export_volumes_pipeline.io_managers import VolumesIOManager
 from export_volumes_pipeline.models import Volume
-from export_volumes_pipeline.utils import sanitize_filename
+from export_volumes_pipeline.utils import parse_int, sanitize_filename
 
 from .errors import PacsError
 from .partitions import daily_partition
@@ -81,7 +81,7 @@ def found_volumes(
                     modality=series.Modality,
                     study_description=study.StudyDescription,
                     series_description=series.SeriesDescription,
-                    series_number=int(series.SeriesNumber),
+                    series_number=parse_int(series.SeriesNumber),
                     study_date=study.StudyDate,
                     study_time=study.StudyTime,
                     institution_name=study.InstitutionName,
