@@ -7,13 +7,14 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = ">=3.12,<3.13"
-adit-client = { git = "https://github.com/openradx/adit-client.git", rev = "57f68eb7544aef28386b007e7eaeab54be99b616" }
 dagster = "^1.9.2"
 dagster-webserver = "^1.9.2"
 shortuuid = "^1.0.13"
+pydicom = "2.4.4"
+pynetdicom = "^2.1.1"
+dicognito = "0.17.0"
 
 [tool.poetry.group.dev.dependencies]
-adit-radis-shared = { git = "https://github.com/openradx/adit-radis-shared.git", tag = "0.9.5" }
 invoke = "^2.2.0"
 pyright = "^1.1.385"
 ruff = "^0.7.0"

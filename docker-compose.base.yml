@@ -4,9 +4,7 @@ services:
     volumes:
       - "${VOLUMES_DIR:?}:/exported_volumes"
     environment:
-      ADIT_AUTH_TOKEN: "${ADIT_AUTH_TOKEN}"
-      ADIT_HOST: "${ADIT_HOST}"
-      CA_BUNDLE: "${CA_BUNDLE}"
+      CALLING_AE_TITLE: "${CALLING_AE_TITLE}"
       DAGSTER_HOME: "/opt/dagster/dagster_home"
       EXPORT_DIR: "/exported_volumes"
       HTTP_PROXY: "${HTTP_PROXY}"
@@ -16,6 +14,7 @@ services:
       MODALITIES: "${MODALITIES}"
       NO_PROXY: "${NO_PROXY}"
       PACS_AE_TITLE: "${PACS_AE_TITLE}"
-      VERIFY_SSL: "${VERIFY_SSL}"
+      PACS_HOST: "${PACS_HOST}"
+      PACS_PORT: "${PACS_PORT}"
     command: >
       bash -c "dagster dev -h 0.0.0.0 -m export_volumes_pipeline"

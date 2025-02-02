@@ -2,7 +2,7 @@
 
 ## About
 
-Image Export Pipeline is a [Dagster](https://dagster.io/) pipeline to export radiological images from a PACS (by using [ADIT](https://github.com/radexperts/adit)). With the help of [ADIT Client](https://github.com/openradx/adit-client) the images also get anonymized (by anonymizing sensible data in the DICOM header).
+Image Export Pipeline is a [Dagster](https://dagster.io/) pipeline to export and anonymize radiological images from a PACS.
 
 ## Setup
 

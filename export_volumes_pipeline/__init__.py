@@ -10,11 +10,11 @@ defs = Definitions(
         "io_manager": io_managers.ConfigurableVolumesIOManager(
             export_dir=EnvVar("EXPORT_DIR"),
         ),
-        "adit": resources.AditResource(
-            host=EnvVar("ADIT_HOST"),
-            auth_token=EnvVar("ADIT_AUTH_TOKEN"),
-            verify_ssl=EnvVar("VERIFY_SSL"),
-            ca_bundle=EnvVar("CA_BUNDLE"),
+        "pacs": resources.PacsResource(
+            calling_ae_title=EnvVar("CALLING_AE_TITLE"),
+            pacs_ae_title=EnvVar("PACS_AE_TITLE"),
+            pacs_host=EnvVar("PACS_HOST"),
+            pacs_port=EnvVar.int("PACS_PORT"),
         ),
     },
 )

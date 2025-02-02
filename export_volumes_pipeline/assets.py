@@ -9,22 +9,19 @@ from dagster import (
     asset,
     load_assets_from_current_module,
 )
+from dicognito.anonymizer import Anonymizer
 from pydantic import Field
 from pydicom import Dataset
 
 from export_volumes_pipeline.io_managers import VolumesIOManager
 from export_volumes_pipeline.models import Volume
-from export_volumes_pipeline.utils import hash_date_base62, sanitize_filename
+from export_volumes_pipeline.utils import sanitize_filename
 
 from .partitions import daily_partition
-from .resources import AditResource
+from .resources import PacsResource
 
 
 class VolumesConfig(Config):
-    pacs_ae_title: str = Field(
-        default=EnvVar("PACS_AE_TITLE"),
-        description=("The AE title of the PACS to download volumes from."),
-    )
     modalities: str = Field(
         default=EnvVar("MODALITIES"),
         description="Comma separated list of modalities we want to download.",
@@ -41,7 +38,7 @@ class VolumesConfig(Config):
 
 @asset(partitions_def=daily_partition)
 def found_volumes(
-    context: AssetExecutionContext, config: VolumesConfig, adit: AditResource
+    context: AssetExecutionContext, config: VolumesConfig, pacs: PacsResource
 ) -> list[Volume]:
     time_window = context.partition_time_window
     start = time_window.start
@@ -53,10 +50,10 @@ def found_volumes(
         # We can't search for studies with a specific institution name directly. So we
         # search all studies, download one image of a study and check the institution name
         # in that image.
-        studies = adit.find_studies(config.pacs_ae_title, start, end, modality)
+        studies = pacs.find_studies(start, end, modality)
         institution_name: str = config.institution_name
         for study in studies:
-            image = adit.fetch_first_image(config.pacs_ae_title, study.StudyInstanceUID, modalities)
+            image = pacs.fetch_first_image_in_study(study.StudyInstanceUID, modalities)
             if not image or institution_name not in study.InstitutionName:
                 continue
 
@@ -66,7 +63,7 @@ def found_volumes(
     for study in found_studies:
         # Each study gets a unique pseudonym
         pseudonym = shortuuid.uuid()
-        series_list = adit.find_series(config.pacs_ae_title, study.StudyInstanceUID)
+        series_list = pacs.find_series(study.StudyInstanceUID)
         for series in series_list:
             if series.Modality not in modalities:
                 continue
@@ -101,32 +98,36 @@ def found_volumes(
 @asset(partitions_def=daily_partition)
 def exported_volumes(
     context: AssetExecutionContext,
-    config: VolumesConfig,
-    adit: AditResource,
+    pacs: PacsResource,
     found_volumes: list[Volume],
 ) -> None:
     io_manager: VolumesIOManager = context.resources.io_manager
     export_path = Path(io_manager.export_dir)
 
+    # Group volumes by study for anonymization
+    volumes_by_study: dict[str, list[Volume]] = {}
     for volume in found_volumes:
-        assert volume.db_id is not None
+        if volume.study_instance_uid not in volumes_by_study:
+            volumes_by_study[volume.study_instance_uid] = []
+        volumes_by_study[volume.study_instance_uid].append(volume)
 
-        date_hash = hash_date_base62(volume.study_date)
-        volume_name = f"{volume.series_number}-{sanitize_filename(volume.series_description)}"
-        volume_path = export_path / date_hash / volume.pseudonym / volume_name
-        volume_path.mkdir(parents=True, exist_ok=True)
+    for _, volumes in volumes_by_study.items():
+        anonymizer = Anonymizer()
 
-        dicoms = adit.download_series(
-            config.pacs_ae_title,
-            volume.study_instance_uid,
-            volume.series_instance_uid,
-            volume.pseudonym,
-        )
+        for volume in volumes:
+            assert volume.db_id is not None
 
-        for dicom in dicoms:
-            dicom.save_as(volume_path / f"{dicom.SOPInstanceUID}.dcm")
+            year_and_month = volume.study_date[:6]
+            volume_name = f"{volume.series_number}-{sanitize_filename(volume.series_description)}"
+            volume_path = export_path / year_and_month / volume.pseudonym / volume_name
+            volume_path.mkdir(parents=True, exist_ok=True)
 
-        io_manager.update_volume(volume.db_id, str(volume_path.absolute()))
+            dicoms = pacs.download_series(volume.study_instance_uid, volume.series_instance_uid)
+            for dicom in dicoms:
+                anonymizer.anonymize(dicom)
+                dicom.save_as(volume_path / f"{dicom.SOPInstanceUID}.dcm")
+
+            io_manager.update_volume(volume.db_id, str(volume_path.absolute()))
 
 
 all_assets = load_assets_from_current_module()
