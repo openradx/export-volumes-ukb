@@ -17,6 +17,7 @@ from export_volumes_pipeline.io_managers import VolumesIOManager
 from export_volumes_pipeline.models import Volume
 from export_volumes_pipeline.utils import sanitize_filename
 
+from .errors import PacsError
 from .partitions import daily_partition
 from .resources import PacsResource
 
@@ -50,11 +51,11 @@ def found_volumes(
         studies = pacs.find_studies(start, end, modality)
         institution_name: str = config.institution_name
         for study in studies:
-            if not pacs.check_institution_name(
-                study.StudyInstanceUID, modalities, institution_name
-            ):
+            study_institution_name = pacs.fetch_institution_name(study.StudyInstanceUID, modalities)
+            if study_institution_name is None or institution_name not in study_institution_name:
                 continue
 
+            study.InstitutionName = study_institution_name
             found_studies.append(study)
 
     found_volumes: list[Volume] = []
@@ -83,12 +84,23 @@ def found_volumes(
                     series_number=int(series.SeriesNumber),
                     study_date=study.StudyDate,
                     study_time=study.StudyTime,
+                    institution_name=study.InstitutionName,
                     number_of_series_related_instances=series.NumberOfSeriesRelatedInstances,
                     folder=None,
+                    found_volumes_run_id=context.run_id,
+                    exported_volumes_run_id=None,
+                    status="pending",
                 )
             )
 
     context.log.info(f"{len(found_volumes)} volumes found in {len(found_studies)} studies.")
+
+    context.add_output_metadata(
+        {
+            "num_found_studies": len(found_studies),
+            "num_found_volumes": len(found_volumes),
+        }
+    )
 
     return found_volumes
 
@@ -109,6 +121,10 @@ def exported_volumes(
             volumes_by_study[volume.study_instance_uid] = []
         volumes_by_study[volume.study_instance_uid].append(volume)
 
+    exported_studies_count = 0
+    exported_volumes_count = 0
+    exported_images_count = 0
+
     for _, volumes in volumes_by_study.items():
         anonymizer = Anonymizer()
 
@@ -120,12 +136,29 @@ def exported_volumes(
             volume_path = export_path / year_and_month / volume.pseudonym / volume_name
             volume_path.mkdir(parents=True, exist_ok=True)
 
-            dicoms = pacs.download_series(volume.study_instance_uid, volume.series_instance_uid)
-            for dicom in dicoms:
-                anonymizer.anonymize(dicom)
-                dicom.save_as(volume_path / f"{dicom.SOPInstanceUID}.dcm")
+            try:
+                dicoms = pacs.fetch_volume(volume.study_instance_uid, volume.series_instance_uid)
+                for dicom in dicoms:
+                    anonymizer.anonymize(dicom)
+                    dicom.save_as(volume_path / f"{dicom.SOPInstanceUID}.dcm")
+                    exported_images_count += 1
 
-            io_manager.update_volume(volume.db_id, str(volume_path.absolute()))
+                folder = str(volume_path.absolute())
+                io_manager.update_volume(volume.db_id, folder, context.run_id, "exported")
+
+                exported_volumes_count += 1
+            except PacsError:
+                io_manager.update_volume(volume.db_id, None, context.run_id, "error")
+
+        exported_studies_count += 1
+
+    context.add_output_metadata(
+        {
+            "num_exported_studies": exported_studies_count,
+            "num_exported_volumes": exported_volumes_count,
+            "num_exported_images": exported_images_count,
+        }
+    )
 
 
 all_assets = load_assets_from_current_module()

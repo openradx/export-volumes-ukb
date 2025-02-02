@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from pathlib import Path
+from typing import Iterable
 
 from dagster import ConfigurableResource, DagsterLogManager
 from dagster._core.execution.context.init import InitResourceContext
@@ -7,7 +7,6 @@ from pydantic import Field, PrivateAttr
 from pydicom import Dataset
 
 from export_volumes_pipeline.pacs_client import PacsClient
-from export_volumes_pipeline.utils import is_falsy
 
 
 class PacsResource(ConfigurableResource):
@@ -29,16 +28,6 @@ class PacsResource(ConfigurableResource):
     _logger: DagsterLogManager = PrivateAttr()
 
     def setup_for_execution(self, context: InitResourceContext) -> None:
-        verify: str | bool = not is_falsy(self.verify_ssl)
-        if verify and self.ca_bundle:
-            ca_bundle_path = Path(self.ca_bundle)
-            if ca_bundle_path.is_absolute():
-                verify = ca_bundle_path.as_posix()
-            else:
-                instance = context.instance
-                assert instance
-                verify = (Path(instance.root_directory) / ca_bundle_path).as_posix()
-
         self._client = PacsClient(
             self.calling_ae_title,
             self.pacs_ae_title,
@@ -110,9 +99,7 @@ class PacsResource(ConfigurableResource):
 
         return results
 
-    def check_institution_name(
-        self, study_instance_uid: str, modalities: list[str], institution_name
-    ) -> bool:
+    def fetch_institution_name(self, study_instance_uid: str, modalities: list[str]) -> str | None:
         """Check if the study belongs to the provided institution.
 
         The PACS in Bonn only allows to query the InstitutionName on IMAGE level.
@@ -121,6 +108,7 @@ class PacsResource(ConfigurableResource):
             "QueryRetrieveLevel": "SERIES",
             "StudyInstanceUID": study_instance_uid,
             "SeriesInstanceUID": "",
+            "Modality": "",
         }
 
         for series in list(self._client.find(query)):
@@ -139,6 +127,17 @@ class PacsResource(ConfigurableResource):
             if not images:
                 continue
 
-            return institution_name in images[0].InstitutionName
+            return images[0].InstitutionName
 
-        return False
+        return None
+
+    def fetch_volume(self, study_instance_uid: str, series_instance_uid: str) -> Iterable[Dataset]:
+        query = {
+            "QueryRetrieveLevel": "SERIES",
+            "StudyInstanceUID": study_instance_uid,
+            "SeriesInstanceUID": series_instance_uid,
+        }
+
+        self._logger.debug(f"Fetch volume with query: {query}")
+
+        yield from self._client.retrieve(query)

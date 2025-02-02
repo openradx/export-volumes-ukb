@@ -9,7 +9,7 @@ PROJECT_DIR = Path(__file__).resolve().parent.parent
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Clean the datagster home directory")
-    parser.add_argument("--production", help="Clean the production folder")
+    parser.add_argument("--production", action="store_true", help="Clean the production folder")
     args = parser.parse_args()
 
     if args.production:

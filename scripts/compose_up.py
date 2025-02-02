@@ -8,7 +8,7 @@ PROJECT_DIR = Path(__file__).resolve().parent.parent
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Start the docker-compose services")
-    parser.add_argument("--production", help="Start the production services")
+    parser.add_argument("--production", action="store_true", help="Start the production services")
     args = parser.parse_args()
 
     compose_base_file = PROJECT_DIR / "docker-compose.base.yml"
@@ -33,6 +33,7 @@ if __name__ == "__main__":
         "-p",
         project_name,
         "up",
+        "--build",
         "-d",
     ]
 

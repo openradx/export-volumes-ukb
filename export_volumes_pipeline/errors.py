@@ -1,0 +1,2 @@
+class PacsError(Exception):
+    pass

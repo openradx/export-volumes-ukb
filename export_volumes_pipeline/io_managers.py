@@ -37,8 +37,12 @@ class VolumesIOManager(IOManager):
                     series_number INTEGER,
                     study_date TEXT,
                     study_time TEXT,
+                    institution_name TEXT,
                     number_of_series_related_instances INTEGER,
-                    folder TEXT
+                    folder TEXT,
+                    found_volumes_run_id TEXT,
+                    exported_volumes_run_id TEXT,
+                    status TEXT
                 );
                 """
             )
@@ -58,7 +62,7 @@ class VolumesIOManager(IOManager):
             for volume in volumes:
                 cursor.execute(
                     """
-                    INSERT INTO volumes VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO volumes VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ON CONFLICT(id) DO UPDATE SET
                         partition_key=excluded.partition_key,
                         pseudonym=excluded.pseudonym,
@@ -72,9 +76,13 @@ class VolumesIOManager(IOManager):
                         series_number=excluded.series_number,
                         study_date=excluded.study_date,
                         study_time=excluded.study_time,
+                        institution_name=excluded.institution_name,
                         number_of_series_related_instances=excluded.number_of_series_related_instances,
-                        folder=excluded.folder
-                    """,
+                        folder=excluded.folder,
+                        found_volumes_run_id=excluded.found_volumes_run_id,
+                        exported_volumes_run_id=excluded.exported_volumes_run_id,
+                        status=excluded.status
+                    """,  # noqa: E501
                     (
                         volume.db_id,
                         context.asset_partition_key,
@@ -89,8 +97,12 @@ class VolumesIOManager(IOManager):
                         volume.series_number,
                         volume.study_date,
                         volume.study_time,
+                        volume.institution_name,
                         volume.number_of_series_related_instances,
                         volume.folder,
+                        volume.found_volumes_run_id,
+                        volume.exported_volumes_run_id,
+                        volume.status,
                     ),
                 )
             conn.commit()
@@ -123,19 +135,27 @@ class VolumesIOManager(IOManager):
                     series_number=row[10],
                     study_date=row[11],
                     study_time=row[12],
-                    number_of_series_related_instances=row[13],
-                    folder=row[14],
+                    institution_name=row[13],
+                    number_of_series_related_instances=row[14],
+                    folder=row[15],
+                    found_volumes_run_id=row[16],
+                    exported_volumes_run_id=row[17],
+                    status=row[18],
                 )
                 volumes.append(volume)
 
         return volumes
 
-    def update_volume(self, db_id: int, folder: str) -> None:
+    def update_volume(self, db_id: int, folder: str | None, run_id: str, status: str) -> None:
         with sqlite3.connect(self.db_file) as conn:
             cursor = conn.cursor()
             cursor.execute(
-                "UPDATE volumes SET folder = ? WHERE id = ?",
-                (folder, db_id),
+                """
+                UPDATE volumes
+                SET folder = ?, exported_volumes_run_id = ?, status = ?
+                WHERE id = ?
+                """,
+                (folder, run_id, status, db_id),
             )
             conn.commit()
 

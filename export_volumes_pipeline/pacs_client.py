@@ -3,6 +3,7 @@ from logging import getLogger
 from queue import Empty, Queue
 from typing import Iterable
 
+import stamina
 from pydicom import Dataset
 from pynetdicom import evt
 from pynetdicom._globals import STATUS_PENDING, STATUS_SUCCESS
@@ -15,6 +16,8 @@ from pynetdicom.sop_class import (
 )
 from pynetdicom.status import code_to_category
 
+from .errors import PacsError
+
 logger = getLogger(__name__)
 
 
@@ -25,6 +28,7 @@ class PacsClient:
         self.pacs_host = pacs_host
         self.pacs_port = pacs_port
 
+    @stamina.retry(on=PacsError, attempts=5, timeout=60)
     def find(self, query: dict) -> Iterable[Dataset]:
         ds = Dataset()
         for key, value in query.items():
@@ -45,14 +49,15 @@ class PacsClient:
                         raise Exception("Missing identifier for pending C-FIND.")
                     yield identifier
                 else:
-                    raise Exception(
+                    raise PacsError(
                         "Connection timed out, was aborted or received invalid response"
                     )
 
             assoc.release()
         else:
-            raise Exception("Association rejected, aborted or never connected")
+            raise PacsError("Association rejected, aborted or never connected")
 
+    @stamina.retry(on=PacsError, attempts=5, timeout=60)
     def retrieve(self, query: dict) -> Iterable[Dataset]:
         ds = Dataset()
         for key, value in query.items():
@@ -91,14 +96,14 @@ class PacsClient:
                     if status:
                         logger.debug("C-GET query status: 0x{0:04x}".format(status.Status))
                     else:
-                        raise Exception(
+                        raise PacsError(
                             "Connection timed out, was aborted or received invalid response"
                         )
 
                 # Release the association
                 assoc.release()
             else:
-                print("Association rejected, aborted or never connected")
+                raise PacsError("Association rejected, aborted or never connected")
 
         with ThreadPoolExecutor(max_workers=1) as executor:
             future = executor.submit(association_handler)
