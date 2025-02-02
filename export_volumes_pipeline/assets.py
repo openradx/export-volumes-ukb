@@ -47,14 +47,12 @@ def found_volumes(
     found_studies: list[Dataset] = []
     modalities = [m.strip() for m in config.modalities.split(",")]
     for modality in modalities:
-        # We can't search for studies with a specific institution name directly. So we
-        # search all studies, download one image of a study and check the institution name
-        # in that image.
         studies = pacs.find_studies(start, end, modality)
         institution_name: str = config.institution_name
         for study in studies:
-            image = pacs.fetch_first_image_in_study(study.StudyInstanceUID, modalities)
-            if not image or institution_name not in study.InstitutionName:
+            if not pacs.check_institution_name(
+                study.StudyInstanceUID, modalities, institution_name
+            ):
                 continue
 
             found_studies.append(study)

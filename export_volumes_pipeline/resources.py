@@ -1,6 +1,5 @@
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Iterable
 
 from dagster import ConfigurableResource, DagsterLogManager
 from dagster._core.execution.context.init import InitResourceContext
@@ -111,9 +110,13 @@ class PacsResource(ConfigurableResource):
 
         return results
 
-    def fetch_first_image_in_study(
-        self, study_instance_uid: str, modalities: list[str]
-    ) -> Dataset | None:
+    def check_institution_name(
+        self, study_instance_uid: str, modalities: list[str], institution_name
+    ) -> bool:
+        """Check if the study belongs to the provided institution.
+
+        The PACS in Bonn only allows to query the InstitutionName on IMAGE level.
+        """
         query = {
             "QueryRetrieveLevel": "SERIES",
             "StudyInstanceUID": study_instance_uid,
@@ -128,34 +131,14 @@ class PacsResource(ConfigurableResource):
                 "QueryRetrieveLevel": "IMAGE",
                 "StudyInstanceUID": series.StudyInstanceUID,
                 "SeriesInstanceUID": series.SeriesInstanceUID,
-                "SOPInstanceUID": "",
+                "InstitutionName": "",
             }
+
             images = list(self._client.find(query))
 
-            if images:
-                image = images[0]
-                query = {
-                    "QueryRetrieveLevel": "IMAGE",
-                    "StudyInstanceUID": image.StudyInstanceUID,
-                    "SeriesInstanceUID": image.SeriesInstanceUID,
-                    "SOPInstanceUID": image.SOPInstanceUID,
-                }
+            if not images:
+                continue
 
-                return list(self._client.find(query))[0]
+            return institution_name in images[0].InstitutionName
 
-        return None
-
-    def download_series(
-        self,
-        study_instance_uid: str,
-        series_instance_uid: str,
-    ) -> Iterable[Dataset]:
-        self._logger.debug(f"Fetching series with SeriesInstanceUID {study_instance_uid}.")
-
-        query = {
-            "QueryRetrieveLevel": "SERIES",
-            "StudyInstanceUID": study_instance_uid,
-            "SeriesInstanceUID": series_instance_uid,
-        }
-
-        return self._client.retrieve(query)
+        return False
