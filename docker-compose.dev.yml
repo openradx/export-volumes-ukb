@@ -3,8 +3,6 @@ services:
     build:
       target: development
     image: export_volumes_pipeline_dev:latest
-    ports:
-      - "${WEB_DEV_PORT:-3500}:3000"
     volumes:
       - ./dagster_home_dev:/opt/dagster/dagster_home
       - .:/opt/dagster/app

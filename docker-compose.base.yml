@@ -1,20 +1,22 @@
 services:
   dagster:
     user: "${USER_UID}:${USER_GID}"
+    ports:
+      - "${DAGSTER_PORT:?}:3000"
     volumes:
       - "${VOLUMES_DIR:?}:/exported_volumes"
     environment:
-      CALLING_AE_TITLE: "${CALLING_AE_TITLE}"
+      CALLING_AE_TITLE: "${CALLING_AE_TITLE:?}"
       DAGSTER_HOME: "/opt/dagster/dagster_home"
       EXPORT_DIR: "/exported_volumes"
       HTTP_PROXY: "${HTTP_PROXY}"
       HTTPS_PROXY: "${HTTPS_PROXY}"
-      INSTITUTION_NAME: "${INSTITUTION_NAME}"
-      MIN_VOLUME_SIZE: "${MIN_VOLUME_SIZE}"
-      MODALITIES: "${MODALITIES}"
+      INSTITUTION_NAME: "${INSTITUTION_NAME:?}"
+      MIN_VOLUME_SIZE: "${MIN_VOLUME_SIZE:?}"
+      MODALITIES: "${MODALITIES:?}"
       NO_PROXY: "${NO_PROXY}"
-      PACS_AE_TITLE: "${PACS_AE_TITLE}"
-      PACS_HOST: "${PACS_HOST}"
-      PACS_PORT: "${PACS_PORT}"
+      PACS_AE_TITLE: "${PACS_AE_TITLE:?}"
+      PACS_HOST: "${PACS_HOST:?}"
+      PACS_PORT: "${PACS_PORT:?}"
     command: >
       bash -c "dagster dev -h 0.0.0.0 -m export_volumes_pipeline"

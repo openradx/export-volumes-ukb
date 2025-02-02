@@ -106,6 +106,7 @@ class VolumesIOManager(IOManager):
                     ),
                 )
             conn.commit()
+            context.log.debug(f"Saved data of {len(volumes)} volumes to db.")
 
     def load_input(self, context: InputContext) -> list[Volume]:
         if not context.asset_partition_key:
@@ -117,9 +118,9 @@ class VolumesIOManager(IOManager):
                 "SELECT * FROM volumes WHERE partition_key = ?", (context.asset_partition_key,)
             )
             rows = cursor.fetchall()
+            context.log.debug(f"Loaded data of {len(rows)} volumes from db.")
 
             volumes = []
-            context.log.info(f"Loading {len(rows)} {rows}.")
             for row in rows:
                 volume = Volume(
                     db_id=row[0],
