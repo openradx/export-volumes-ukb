@@ -28,7 +28,7 @@ class PacsClient:
         self.pacs_host = pacs_host
         self.pacs_port = pacs_port
 
-    @stamina.retry(on=PacsError, attempts=5, timeout=60)
+    @stamina.retry(on=PacsError, attempts=3, timeout=30)
     def find(self, query: dict) -> Iterable[Dataset]:
         ds = Dataset()
         for key, value in query.items():
@@ -57,7 +57,7 @@ class PacsClient:
         else:
             raise PacsError("Association rejected, aborted or never connected")
 
-    @stamina.retry(on=PacsError, attempts=5, timeout=60)
+    @stamina.retry(on=PacsError, attempts=3, timeout=30)
     def retrieve(self, query: dict) -> Iterable[Dataset]:
         ds = Dataset()
         for key, value in query.items():
