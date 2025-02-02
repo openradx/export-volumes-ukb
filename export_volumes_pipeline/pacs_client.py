@@ -31,6 +31,7 @@ class PacsClient:
             setattr(ds, key, value)
 
         ae = AE(ae_title=self.calling_ae_title)
+        ae.add_requested_context(StudyRootQueryRetrieveInformationModelFind)
         assoc = ae.associate(self.pacs_host, self.pacs_port, ae_title=self.pacs_ae_title)
         if assoc.is_established:
             responses = assoc.send_c_find(ds, StudyRootQueryRetrieveInformationModelFind)
@@ -66,9 +67,9 @@ class PacsClient:
             return 0x0000
 
         ae = AE(ae_title=self.calling_ae_title)
-        ae.add_requested_context(StudyRootQueryRetrieveInformationModelFind)
+        ae.add_requested_context(StudyRootQueryRetrieveInformationModelGet)
         ext_neg = []
-        for cx in StoragePresentationContexts:
+        for cx in StoragePresentationContexts[: 128 - 1]:
             assert cx.abstract_syntax is not None
             ae.add_requested_context(cx.abstract_syntax)
             ext_neg.append(build_role(cx.abstract_syntax, scp_role=True))
@@ -88,9 +89,11 @@ class PacsClient:
                 responses = assoc.send_c_get(ds, StudyRootQueryRetrieveInformationModelGet)
                 for status, identifier in responses:
                     if status:
-                        print("C-GET query status: 0x{0:04x}".format(status.Status))
+                        logger.debug("C-GET query status: 0x{0:04x}".format(status.Status))
                     else:
-                        print("Connection timed out, was aborted or received invalid response")
+                        raise Exception(
+                            "Connection timed out, was aborted or received invalid response"
+                        )
 
                 # Release the association
                 assoc.release()
@@ -100,10 +103,9 @@ class PacsClient:
         with ThreadPoolExecutor(max_workers=1) as executor:
             future = executor.submit(association_handler)
 
-            while not future.done() and not queue.empty():
+            while not future.done():
                 try:
-                    ds = queue.get(timeout=1)
-                    yield ds
+                    yield queue.get(timeout=1)
                 except Empty:
                     continue
 

@@ -6,16 +6,18 @@ authors = ["medihack <kai.schlamp@gmail.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = ">=3.12,<3.13"
 dagster = "^1.9.2"
 dagster-webserver = "^1.9.2"
-shortuuid = "^1.0.13"
+dicognito = "0.17.0"
 pydicom = "2.4.4"
 pynetdicom = "^2.1.1"
-dicognito = "0.17.0"
+python = ">=3.12,<3.13"
+shortuuid = "^1.0.13"
 
 [tool.poetry.group.dev.dependencies]
+environs = "^14.1.0"
 invoke = "^2.2.0"
+ipykernel = "^6.29.5"
 pyright = "^1.1.385"
 ruff = "^0.7.0"
 

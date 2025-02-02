@@ -153,7 +153,7 @@ class PacsResource(ConfigurableResource):
         self._logger.debug(f"Fetching series with SeriesInstanceUID {study_instance_uid}.")
 
         query = {
-            "QueryRetrieveLevel": "IMAGE",
+            "QueryRetrieveLevel": "SERIES",
             "StudyInstanceUID": study_instance_uid,
             "SeriesInstanceUID": series_instance_uid,
         }
